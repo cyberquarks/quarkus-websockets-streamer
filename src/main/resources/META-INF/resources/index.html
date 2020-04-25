@@ -1,0 +1,95 @@
+<!doctype html>
+<head>
+  <title>Websockets Demo</title>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <link rel="stylesheet" href="styles.css" type="text/css">
+</head>
+<body>
+  <header>
+    <h1><a href="index.html">Websockets encoding</a></h1>
+    <p>Send video frames</p>
+  </header>
+  <main>
+    <div class="row">
+      <figure>
+        <video id="player" height="360" controls autoplay></video><br />
+        <caption>source</caption>
+      </figure>
+      <figure>
+        <canvas id="preview" width="640" height="360"></canvas><br />
+        <caption>canvas preview (local)</caption>
+      </figure>
+      <figure>
+        <canvas id="decoded" width="640" height="360"></canvas><br />
+        <caption>websocket <span id="websocket-latency"></span></caption>
+      </figure>
+    </div>
+  </main>
+
+  <!-- hidden elements -->
+  <div><span id="count" style="display:none"></span></div>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
+  <script type="text/javascript">
+
+    $(document).ready(function() {
+      navigator.mediaDevices.getUserMedia({ audio: false, video: true })
+              .then(handleSuccess);
+    });
+
+    let frameRate;
+    const pW = 640, pH = 360;
+    const decoded = document.querySelector("#decoded");
+    const dCtx = decoded.getContext('2d');
+    const preview = document.querySelector("#preview");
+    const player = document.querySelector("#player");
+    const prevCtx = preview.getContext('2d');
+
+    let socket;
+    let connected = false;
+
+    async function renderImage(ctx, blob) {
+      const bmp = await createImageBitmap(blob);
+      ctx.drawImage(bmp, 0, 0);
+      bmp.close();
+    }
+
+    const connect = function() {
+      let socketStartTime = performance.now();
+      if (! connected) {
+            let name = 'demo';
+            socket = new WebSocket("ws://" + location.host + "/video/" + name);
+            socket.onopen = function() {
+                connected = true;
+                console.log("Connected to the web socket");
+                capture();
+            };
+            socket.onmessage = function (m) {
+                let blob = m.data;
+                renderImage(dCtx, blob);
+                const now = performance.now();
+                socketStartTime = now;
+            }
+        }
+    };
+
+    const handleSuccess = function (stream) {
+      let videoStream = new MediaStream(stream.getVideoTracks());
+      frameRate = videoStream.getVideoTracks()[0].getSettings().frameRate;
+      player.srcObject = videoStream;
+      connect();
+    };
+
+    async function capture() {
+      // Render image to canvas
+      let drawImage = async function(time) {
+        prevCtx.drawImage(player, 0, 0, pW, pH);
+        const blob = await new Promise(resolve => preview.toBlob(resolve, 'image/jpeg', 0.5));
+        socket.send(blob);
+        requestAnimationFrame(drawImage);
+      };
+      requestAnimationFrame(drawImage);
+    }
+  </script>
+</body>

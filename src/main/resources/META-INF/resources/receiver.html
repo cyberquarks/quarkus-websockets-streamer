@@ -1,0 +1,163 @@
+<!doctype html>
+<head>
+  <title>Websockets Demo - Receiver</title>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <link rel="stylesheet" href="styles.css" type="text/css">
+</head>
+<body>
+  <header>
+    <h1><a href="receiver.html">Websockets receiver</a></h1>
+    <p>Receive video frames</p>
+  </header>
+  <main>
+    <div class="row">
+      <figure>
+        <canvas id="decoded1" width="640" height="360"></canvas><br />
+        <caption>decoded <span id="websocket-latency0"></span></caption>
+      </figure>
+      <figure>
+        <canvas id="decoded2" width="640" height="360"></canvas><br />
+        <caption>websocket <span id="websocket-latency1"></span></caption>
+      </figure>
+      <figure>
+        <canvas id="decoded3" width="640" height="360"></canvas><br />
+        <caption>websocket <span id="websocket-latency2"></span></caption>
+      </figure>
+      <figure>
+        <canvas id="decoded4" width="640" height="360"></canvas><br />
+        <caption>websocket <span id="websocket-latency3"></span></caption>
+      </figure>
+      <figure>
+        <canvas id="decoded5" width="640" height="360"></canvas><br />
+        <caption>websocket <span id="websocket-latency4"></span></caption>
+      </figure>
+      <figure>
+        <canvas id="decoded6" width="640" height="360"></canvas><br />
+        <caption>websocket <span id="websocket-latency5"></span></caption>
+      </figure>
+      <figure>
+        <canvas id="decoded7" width="640" height="360"></canvas><br />
+        <caption>websocket <span id="websocket-latency6"></span></caption>
+      </figure>
+      <figure>
+        <canvas id="decoded8" width="640" height="360"></canvas><br />
+        <caption>websocket <span id="websocket-latency7"></span></caption>
+      </figure>
+      <figure>
+        <canvas id="decoded9" width="640" height="360"></canvas><br />
+        <caption>websocket <span id="websocket-latency8"></span></caption>
+      </figure>
+      <figure>
+        <canvas id="decoded10" width="640" height="360"></canvas><br />
+        <caption>websocket <span id="websocket-latency9"></span></caption>
+      </figure>
+
+      <figure>
+        <canvas id="decoded11" width="640" height="360"></canvas><br />
+        <caption>websocket <span id="websocket-latency10"></span></caption>
+      </figure>
+      <figure>
+        <canvas id="decoded12" width="640" height="360"></canvas><br />
+        <caption>websocket <span id="websocket-latency11"></span></caption>
+      </figure>
+      <figure>
+        <canvas id="decoded13" width="640" height="360"></canvas><br />
+        <caption>websocket <span id="websocket-latency12"></span></caption>
+      </figure>
+      <figure>
+        <canvas id="decoded14" width="640" height="360"></canvas><br />
+        <caption>websocket <span id="websocket-latency13"></span></caption>
+      </figure>
+      <figure>
+        <canvas id="decoded15" width="640" height="360"></canvas><br />
+        <caption>websocket <span id="websocket-latency14"></span></caption>
+      </figure>
+      <figure>
+        <canvas id="decoded16" width="640" height="360"></canvas><br />
+        <caption>websocket <span id="websocket-latency15"></span></caption>
+      </figure>
+      <figure>
+        <canvas id="decoded17" width="640" height="360"></canvas><br />
+        <caption>websocket <span id="websocket-latency16"></span></caption>
+      </figure>
+      <figure>
+        <canvas id="decoded18" width="640" height="360"></canvas><br />
+        <caption>websocket <span id="websocket-latency17"></span></caption>
+      </figure>
+      <figure>
+        <canvas id="decoded19" width="640" height="360"></canvas><br />
+        <caption>websocket <span id="websocket-latency18"></span></caption>
+      </figure>
+      <figure>
+        <canvas id="decoded20" width="640" height="360"></canvas><br />
+        <caption>websocket <span id="websocket-latency19"></span></caption>
+      </figure>
+    </div>
+
+  </main>
+
+  <!-- hidden elements -->
+  <canvas id="stream-canvas" style="display: none;"></canvas><br />
+  <div><span id="count" style="display:none"></span></div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
+  <script type="text/javascript">
+    /*
+    * Web socket
+    * */
+    const sockets = [];
+    const connectedSockets = [];
+    const socketStartTimes = [];
+
+    function connected(socketIdx) {
+      socketStartTimes[socketIdx] = performance.now();
+      sockets[socketIdx].onclose = function() {
+        console.log("Disconnected " + i);
+      };
+      sockets[socketIdx].onerror = function(err){
+        console.error('Socket encountered error: ', err.message, 'Closing socket');
+        sockets[socketIdx].close();
+      };
+
+      const canvas = document.querySelector('#decoded' + (socketIdx+1));
+      const context = canvas.getContext('2d');
+
+      sockets[socketIdx].onmessage = function (m) {
+        const blob = new Blob([m.data], { type: 'image/jpeg' });
+        const now = performance.now();
+        const totalLatency = (now - socketStartTimes[socketIdx]);
+        socketStartTimes[socketIdx] = now;
+        console.log(totalLatency);
+        $("#websocket-latency" + socketIdx)[0].innerText = parseInt(totalLatency);
+        renderImage(context, blob);
+      }
+    }
+
+
+    const connect = function () {
+      for(let i=0;i<20;i++) {
+        if(!connectedSockets[i]) {
+          sockets[i] = new WebSocket('ws://' + location.host + '/video/' + 'demo' + i);
+          sockets[i].onopen = function () {
+            connectedSockets[i] = true;
+            console.log("Connected " + i);
+            connected(i);
+          };
+        };
+      }
+    };
+
+    connect();
+
+    let totalDecoded = 0;
+    async function renderImage(ctx, blob) {
+      totalDecoded = totalDecoded + blob.size;
+      const bmp = await createImageBitmap(blob);
+      ctx.drawImage(bmp, 0, 0);
+      bmp.close();
+    }
+
+  </script>
+</body>
